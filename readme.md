@@ -34,17 +34,18 @@ Firebase provides a variety of tools that are amazing. This wraps various aspect
 import {
   createRtdbLift,
   createFirestoreLift,
-  FirestoreLiftCollection
-  TypedFirebaseObjectOrPrimativeRefGenerator
-} from '../RTDB';
+  FirestoreLiftCollection,
+  TypedFirebaseObjectOrPrimativeRefGenerator,
+  FirestoreLiftDocRoot
+} from 'firebase-lift';
 import * as firebase from 'firebase';
 
-interface Person {
+interface Person extends FirestoreLiftDocRoot {
   name: string;
   age: number;
 }
 
-interface Book {
+interface Book extends FirestoreLiftDocRoot {
   title: string;
   year: number;
 }
@@ -59,9 +60,12 @@ interface DeviceInfo {
   dId: string;
 }
 
-const app = firebase.initializeApp(testFirebaseConfig);
+const app = firebase.initializeApp({} as any);
 
-const firestoreLiftExample = createFirestoreLift<ExampleFirestore>({
+const firestoreLiftExample = createFirestoreLift<{
+  Person: FirestoreLiftCollection<Person>;
+  Book: FirestoreLiftCollection<Book>;
+}>({
   collections: {
     Person: {
       collection: 'person'
@@ -74,9 +78,12 @@ const firestoreLiftExample = createFirestoreLift<ExampleFirestore>({
   firestoreModule: firebase.firestore
 });
 
-const rtdbLiftExample = createRtdbLift({firebaseApp: app, {
-  person: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Person>,
-  book: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Book>
-}});
+const rtdbLiftExample = createRtdbLift({
+  firebaseApp: app,
+  nodes: {
+    Heartbeat: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Heartbeat>,
+    DeviceInfo: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<DeviceInfo>
+  }
+});
 
 ```
