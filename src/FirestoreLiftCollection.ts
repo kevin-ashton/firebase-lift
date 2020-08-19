@@ -11,7 +11,6 @@ import {
   SimpleQuery,
   FirestoreLiftCollectionStats,
   ActiveSubscriptions,
-  FirestoreLiftDocRoot,
   QueryResultSet,
   FirestoreLiftQuerySubscription,
   QuerySubscriptionResultSet,
@@ -26,7 +25,7 @@ import * as _ from 'lodash';
 import * as md5 from 'md5';
 import * as jsonStable from 'json-stable-stringify';
 
-export class FirestoreLiftCollection<DocModel extends FirestoreLiftDocRoot> {
+export class FirestoreLiftCollection<DocModel extends { id: string }> {
   private readonly collection: string;
   private readonly batchRunner: BatchRunner;
   public _stats: FirestoreLiftCollectionStats = {
@@ -492,11 +491,6 @@ export class FirestoreLiftCollection<DocModel extends FirestoreLiftDocRoot> {
     }
     if (!request.doc['id']) {
       request.doc['id'] = this.generateId();
-    }
-
-    // We always add a createdAtMS
-    if (!request.doc['createdAtMS']) {
-      request.doc['createdAtMS'] = Date.now();
     }
 
     let task: BatchTaskAdd = {

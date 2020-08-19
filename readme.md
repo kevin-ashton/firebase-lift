@@ -36,16 +36,21 @@ import {
   createFirestoreLift,
   FirestoreLiftCollection,
   TypedFirebaseObjectOrPrimativeRefGenerator,
-  FirestoreLiftDocRoot
 } from 'firebase-lift';
 import * as firebase from 'firebase';
 
 interface Person extends FirestoreLiftDocRoot {
+  id: string;
+  createdAtMS: number;
+  updatedAtMS: number;
   name: string;
   age: number;
 }
 
 interface Book extends FirestoreLiftDocRoot {
+  id: string;
+  createdAtMS: number;
+  updatedAtMS: number;
   title: string;
   year: number;
 }
