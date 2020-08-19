@@ -1,13 +1,6 @@
 import * as firebase from 'firebase';
 import { BatchRunner } from './BatchRunner';
 
-// Expected all docs extend this interface
-export interface FirestoreLiftDocRoot {
-  id: string;
-  createdAtMS: number;
-  updatedAtMS: number;
-}
-
 export interface FirestoreLiftRoot {
   _setFirestoreLiftDisabledStatus: (status: boolean) => void;
   _GetStats: () => FirestoreLiftStats;

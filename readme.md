@@ -39,7 +39,7 @@ import {
 } from 'firebase-lift';
 import * as firebase from 'firebase';
 
-interface Person extends FirestoreLiftDocRoot {
+interface Person {
   id: string;
   createdAtMS: number;
   updatedAtMS: number;
@@ -47,7 +47,7 @@ interface Person extends FirestoreLiftDocRoot {
   age: number;
 }
 
-interface Book extends FirestoreLiftDocRoot {
+interface Book {
   id: string;
   createdAtMS: number;
   updatedAtMS: number;

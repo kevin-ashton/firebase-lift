@@ -1,4 +1,4 @@
-import { FirestoreLiftDocRoot, FirestoreLiftInitConfig } from '../models';
+import { FirestoreLiftInitConfig } from '../models';
 import { FirestoreLiftCollection } from '../FirestoreLiftCollection';
 import * as firebase from 'firebase';
 import { createFirestoreLift } from '../FirestoreLift';
@@ -9,7 +9,10 @@ import { TypedFirebaseObjectOrPrimativeRefGenerator, createRtdbLift } from '../R
   Demo Models
   *****************/
 
-export interface Person extends FirestoreLiftDocRoot {
+export interface Person {
+  id: string;
+  createdAtMS: number;
+  updatedAtMS: number;
   name: string;
   age: number;
   weight: number;
@@ -20,7 +23,10 @@ export interface Person extends FirestoreLiftDocRoot {
   };
 }
 
-export interface Book extends FirestoreLiftDocRoot {
+export interface Book {
+  id: string;
+  createdAtMS: number;
+  updatedAtMS: number;
   title: string;
   totalPages: number;
 }
