@@ -78,7 +78,7 @@ export type FirestoreLiftDocsSubscription<DocModel> = {
   ********** */
 
 type WhereFilter<DocModel> = OptionalQuery<DocModel>;
-type WhereFilterOp = '<' | '<=' | '==' | '>=' | '>' | 'in';
+type WhereFilterOp = '<' | '<=' | '==' | '>=' | '>';
 type OrderByDirection = 'desc' | 'asc';
 export type startEndAtValueTypes = string | number;
 
