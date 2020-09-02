@@ -4,8 +4,7 @@ export {
   FirestoreLiftInitConfig,
   FirestoreLiftDocSubscription,
   FirestoreLiftDocsSubscription,
-  FirestoreLiftQuerySubscription,
-  OrNull
+  FirestoreLiftQuerySubscription
 } from './models';
 export { FirestoreLiftCollection } from './FirestoreLiftCollection';
 export { createRtdbLift, TypedFirebaseObjectOrPrimativeRefGenerator } from './RTDB';

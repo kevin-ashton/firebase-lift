@@ -57,7 +57,7 @@ export type FirestoreLiftQuerySubscription<DocModel> = {
 
 export type FirestoreLiftDocSubscription<DocModel> = {
   subscribe: (
-    fn: (p: OrNull<DocModel>) => void,
+    fn: (p: DocModel | null) => void,
     errorFn: (e: Error) => void
   ) => {
     unsubscribe: () => void;
@@ -66,7 +66,7 @@ export type FirestoreLiftDocSubscription<DocModel> = {
 
 export type FirestoreLiftDocsSubscription<DocModel> = {
   subscribe: (
-    fn: (p: Array<OrNull<DocModel>>) => void,
+    fn: (p: Array<DocModel | null>) => void,
     errorFn: (e: Error) => void
   ) => {
     unsubscribe: () => void;
@@ -92,8 +92,6 @@ export interface SimpleQuery<DocModel> {
   endBeforeValue?: startEndAtValueTypes[];
   _internalStartAfterDocId?: any; // Used for pagination. If defined then we ignore startAt
 }
-
-export type OrNull<T> = T | null;
 
 export type Optional<T> = { [P in keyof T]?: Optional2<T[P]> };
 type Optional2<T> = { [P in keyof T]?: Optional3<T[P]> };

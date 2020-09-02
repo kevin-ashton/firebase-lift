@@ -15,7 +15,6 @@ import {
   FirestoreLiftQuerySubscription,
   QuerySubscriptionResultSet,
   Change,
-  OrNull,
   FirestoreLiftDocSubscription,
   FirestoreLiftDocsSubscription
 } from './models';
@@ -129,7 +128,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                 return;
               }
               this._stats.docsFetched += 1;
-              let value: OrNull<DocModel> = snapshot.exists ? (snapshot.data() as any) : null;
+              let value: DocModel | null = snapshot.exists ? (snapshot.data() as any) : null;
 
               if (this.isDisabled) {
                 console.warn('Cannot docSubscription while firestoreLift disabled');
@@ -188,7 +187,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     return {
       subscribe: (fn, errorFn) => {
         const unsubscribeFns: any[] = [];
-        const currentValue: Array<OrNull<DocModel>> = docIds.map(() => null);
+        const currentValue: Array<DocModel | null> = docIds.map(() => null);
         const hasFiredOnceTracker: Record<string, true> = {};
         docIds.forEach((id, index) => {
           const subRef = this.docSubscription(id);
@@ -438,7 +437,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   }
 
   // Fetches a batch of documents based on ids
-  async getDocs(ids: string[]): Promise<Array<OrNull<DocModel>>> {
+  async getDocs(ids: string[]): Promise<Array<DocModel | null>> {
     if (this.isDisabled) {
       console.warn('Cannot get while firestoreLift disabled');
       return [];
@@ -469,7 +468,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     return await Promise.all(p);
   }
 
-  async getDoc(id: string): Promise<OrNull<DocModel>> {
+  async getDoc(id: string): Promise<DocModel | null> {
     if (this.isDisabled) {
       console.warn('Cannot add while firestoreLift disabled');
       null;
