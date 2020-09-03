@@ -57,7 +57,8 @@ export function createFirestoreLift<T>(config: FirestoreLiftInitConfig): T & Fir
       batchRunner,
       collection: col.collection,
       disableIdGeneration: !!col.disableIdGeneration,
-      prefixIdWithCollection: col.prefixIdWithCollectionName === false ? false : true // Want true by default
+      prefixIdWithCollection: col.prefixIdWithCollectionName === false ? false : true, // Want true by default
+      rootPropertiesToDisallowUpdatesOn: col.rootPropertiesToDisallowUpdatesOn
     });
   });
 

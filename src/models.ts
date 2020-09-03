@@ -14,6 +14,7 @@ export interface CollectionConfig {
   collection: string;
   prefixIdWithCollectionName?: boolean; // true (default)
   disableIdGeneration?: boolean; // false (default)
+  rootPropertiesToDisallowUpdatesOn?: string[]; // Useful for derived type fields. i.e. fields that are maintained by some deterministic system
 }
 
 export interface FirestoreLiftInitConfig {

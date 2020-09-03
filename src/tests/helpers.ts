@@ -29,6 +29,10 @@ export interface Book {
   updatedAtMS: number;
   title: string;
   totalPages: number;
+  derived?: {
+    a: string;
+    b: number;
+  };
 }
 
 interface ExampleFirestore {
@@ -57,7 +61,8 @@ export function getTestFirestoreLift() {
         collection: 'person'
       },
       Book: {
-        collection: 'book'
+        collection: 'book',
+        rootPropertiesToDisallowUpdatesOn: ['derived']
       }
     },
     firebaseApp: app,

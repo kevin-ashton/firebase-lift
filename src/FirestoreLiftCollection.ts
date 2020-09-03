@@ -48,18 +48,21 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   private readonly disableIdGeneration: boolean;
   private firestore: firebase.firestore.Firestore;
   private isDisabled: boolean = false;
+  private rootPropertiesToDisallowUpdatesOn: string[];
 
   constructor(config: {
     collection: string;
     batchRunner: BatchRunner;
     prefixIdWithCollection: boolean;
     disableIdGeneration: boolean;
+    rootPropertiesToDisallowUpdatesOn?: string[];
   }) {
     this.collection = config.collection;
     this.batchRunner = config.batchRunner;
     this.firestore = this.batchRunner.firestoreModule(this.batchRunner.app);
     this.prefixIdWithCollection = config.prefixIdWithCollection; // Add the collection name as a prefix to an id. Makes them easier to read
     this.disableIdGeneration = config.disableIdGeneration; // Some id's (such as account ids) you may not want firestore lift to ever generate an id because you want to force it to be assigned manually
+    this.rootPropertiesToDisallowUpdatesOn = config.rootPropertiesToDisallowUpdatesOn || [];
   }
 
   public generateId() {
@@ -539,12 +542,23 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   // Destructive update/delete for document path. Does not merge with existing data.
   async setPath(
     request: { id: string; pathObj: OptionalFlex<DocModel>; value: Optional<DocModel> },
-    config?: { returnBatchTask: boolean }
+    config?: { returnBatchTask: boolean; allowWritesToAllPaths?: boolean }
   ): Promise<BatchTaskSetPath | BatchTaskEmpty> {
     if (this.isDisabled) {
       console.warn('Cannot setPath while firestoreLift disabled');
       return defaultEmptyTask;
     }
+
+    if (!config?.allowWritesToAllPaths) {
+      for (let i = 0; i < this.rootPropertiesToDisallowUpdatesOn.length; i++) {
+        if ((request.pathObj as any)[this.rootPropertiesToDisallowUpdatesOn[i]] !== undefined) {
+          throw new Error(
+            `You cannot run setPath because "${this.rootPropertiesToDisallowUpdatesOn[i]}" has been disabled as path you can write to. To override this set the "allowWritesToAllPaths" config option.`
+          );
+        }
+      }
+    }
+
     let task: BatchTaskSetPath = {
       type: 'setPath',
       id: request.id,
@@ -563,12 +577,23 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   // Updates/deletes parts of a document. Will merge with existing data.
   async update(
     request: { id: string; doc: Optional<DocModel> },
-    config?: { returnBatchTask: boolean }
+    config?: { returnBatchTask?: boolean; allowWritesToAllPaths?: boolean }
   ): Promise<BatchTaskUpdate | BatchTaskEmpty> {
     if (this.isDisabled) {
       console.warn('Cannot update while firestoreLift disabled');
       return defaultEmptyTask;
     }
+
+    if (!config?.allowWritesToAllPaths) {
+      for (let i = 0; i < this.rootPropertiesToDisallowUpdatesOn.length; i++) {
+        if ((request.doc as any)[this.rootPropertiesToDisallowUpdatesOn[i]] !== undefined) {
+          throw new Error(
+            `You cannot run setPath because "${this.rootPropertiesToDisallowUpdatesOn[i]}" has been disabled as path you can write to. To override this set the "allowWritesToAllPaths" config option.`
+          );
+        }
+      }
+    }
+
     let task: BatchTaskUpdate = {
       type: 'update',
       id: request.id,

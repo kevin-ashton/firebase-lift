@@ -43,6 +43,22 @@ describe('Basic CRUD', () => {
     assert.deepEqual(b1.title, newTitle);
   });
 
+  test('update object (disabled field)', async () => {
+    assert.rejects(async () => {
+      await t.Book.update({ id: bookId, doc: { derived: { a: 'a', b: 1 } } });
+    });
+  });
+
+  test('update object (disabled field) with override', async () => {
+    const d = { a: 'a', b: 1 };
+    await t.Book.update({ id: bookId, doc: { derived: d } }, { allowWritesToAllPaths: true });
+    let b1 = await t.Book.getDoc(bookId);
+    if (!b1) {
+      throw 'No object found';
+    }
+    assert.deepEqual(JSON.stringify(b1.derived), JSON.stringify(d));
+  });
+
   test('delete object', async () => {
     await t.Book.delete({ id: bookId });
     let b1 = await t.Book.getDoc(bookId);
