@@ -43,7 +43,7 @@ export function createFirestoreLift<T>(config: FirestoreLiftInitConfig): T & Fir
         pendingFirestoreLift[c].setFirestoreLiftDisabledStatus(isDisabled);
       });
     },
-    _RawFirestore: config.firebaseApp.firestore,
+    _RawFirestore: config.firebaseApp.firestore(),
     _BatchRunner: batchRunner,
     _RawFirebaseApp: config.firebaseApp,
     _MagicDeleteValue: MagicDeleteString,
@@ -58,7 +58,8 @@ export function createFirestoreLift<T>(config: FirestoreLiftInitConfig): T & Fir
       collection: col.collection,
       disableIdGeneration: !!col.disableIdGeneration,
       prefixIdWithCollection: col.prefixIdWithCollectionName === false ? false : true, // Want true by default
-      rootPropertiesToDisallowUpdatesOn: col.rootPropertiesToDisallowUpdatesOn
+      rootPropertiesToDisallowUpdatesOn: col.rootPropertiesToDisallowUpdatesOn,
+      enforceImmutability: config.enforceImmutability
     });
   });
 

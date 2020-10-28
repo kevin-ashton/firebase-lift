@@ -1,5 +1,6 @@
-import { describe, test, setOptions, otest, run } from 'nano-test-runner';
-import { getTestFirestoreLift, reset, Person } from './helpers';
+import { describe, test, setOptions, otest, xtest, run } from 'nano-test-runner';
+import { getTestFirestoreLift, reset, Person, Book } from './helpers';
+import * as stable from 'json-stable-stringify';
 import * as _ from 'lodash';
 import * as assert from 'assert';
 import * as jsonStable from 'json-stable-stringify';
@@ -12,17 +13,24 @@ const t = getTestFirestoreLift();
 describe('Basic CRUD', () => {
   const bookId = t.Book.generateId();
 
+  const initialBook: Book = {
+    id: bookId,
+    createdAtMS: Date.now(),
+    updatedAtMS: Date.now(),
+    nestedExample: {
+      foo1: 'foo1',
+      foo2: 20,
+      foo3: 'foo3'
+    },
+    title: 'The Cat and the Hat',
+    totalPages: 34
+  };
+
   run(async () => await reset());
   test('create doc', async () => {
     await reset();
     await t.Book.add({
-      doc: {
-        id: bookId,
-        createdAtMS: Date.now(),
-        updatedAtMS: Date.now(),
-        title: 'The Cat and the Hat',
-        totalPages: 34
-      }
+      doc: initialBook
     });
   });
 
@@ -35,12 +43,18 @@ describe('Basic CRUD', () => {
 
   test('update object', async () => {
     const newTitle = 'Harry Potter';
-    await t.Book.update({ id: bookId, doc: { title: newTitle } });
+    const newFoo1 = 'Updated foo1';
+
+    let expectedUpdated: Book = JSON.parse(JSON.stringify(initialBook));
+    expectedUpdated.title = newTitle;
+    expectedUpdated.nestedExample.foo1 = newFoo1;
+
+    await t.Book.update({ id: bookId, doc: { title: newTitle, nestedExample: { foo1: newFoo1 } } });
     let b1 = await t.Book.getDoc(bookId);
     if (!b1) {
       throw 'No object found';
     }
-    assert.deepEqual(b1.title, newTitle);
+    assert.deepStrictEqual(stable(b1), stable(expectedUpdated));
   });
 
   test('update object (disabled field)', async () => {
@@ -50,13 +64,56 @@ describe('Basic CRUD', () => {
   });
 
   test('update object (disabled field) with override', async () => {
-    const d = { a: 'a', b: 1 };
+    const d = { a: 'a', b: Math.random() };
     await t.Book.update({ id: bookId, doc: { derived: d } }, { allowWritesToAllPaths: true });
     let b1 = await t.Book.getDoc(bookId);
     if (!b1) {
       throw 'No object found';
     }
-    assert.deepEqual(JSON.stringify(b1.derived), JSON.stringify(d));
+    assert.deepStrictEqual(stable(b1.derived), stable(d));
+  });
+
+  test('update shallow object', async () => {
+    await reset();
+    await t.Book.add({
+      doc: initialBook
+    });
+
+    const newTitle = 'Harry Potter';
+    const newFoo1 = 'Updated foo1';
+    const newFoo2 = Math.random();
+
+    let expectedUpdated: Book = JSON.parse(JSON.stringify(initialBook));
+    expectedUpdated.title = newTitle;
+    expectedUpdated.nestedExample.foo1 = newFoo1;
+    expectedUpdated.nestedExample.foo2 = newFoo2;
+    delete expectedUpdated.nestedExample.foo3;
+
+    await t.Book.updateShallow({
+      id: bookId,
+      doc: { title: newTitle, nestedExample: { foo1: newFoo1, foo2: newFoo2 } }
+    });
+    let b1 = await t.Book.getDoc(bookId);
+    if (!b1) {
+      throw 'No object found';
+    }
+    assert.deepStrictEqual(stable(b1), stable(expectedUpdated));
+  });
+
+  test('update shallow object (disabled field)', async () => {
+    assert.rejects(async () => {
+      await t.Book.updateShallow({ id: bookId, doc: { derived: { a: 'a', b: 1 } } });
+    });
+  });
+
+  test('update shallow object (disabled field) with override', async () => {
+    const d = { a: 'a', b: Math.random() };
+    await t.Book.updateShallow({ id: bookId, doc: { derived: d } }, { allowWritesToAllPaths: true });
+    let b1 = await t.Book.getDoc(bookId);
+    if (!b1) {
+      throw 'No object found';
+    }
+    assert.deepStrictEqual(stable(b1.derived), stable(d));
   });
 
   test('delete object', async () => {
@@ -112,11 +169,11 @@ describe('Basic CRUD', () => {
     };
     await t.Person.set({ id: p1.id, doc: p1 });
     const r1Doc = await t.Person.getDoc(p1.id);
-    assert.deepEqual(jsonStable(r1Doc), jsonStable(p1));
+    assert.deepStrictEqual(jsonStable(r1Doc), jsonStable(p1));
 
     await t.Person.set({ id: p2.id, doc: p2 });
     const r2Doc = await t.Person.getDoc(p2.id);
-    assert.deepEqual(jsonStable(r2Doc), jsonStable(p2));
+    assert.deepStrictEqual(jsonStable(r2Doc), jsonStable(p2));
   });
 
   test('set path', async () => {
@@ -204,9 +261,9 @@ describe('Batches/Queries/Subscriptions', () => {
 
   test('basic getDocs', async () => {
     const r = await t.Person.getDocs([people[0].id, 'SHOULD_NOT_EXIST_ID', people[1].id]);
-    assert.deepEqual(r[0] ? r[0].id : '', people[0].id);
-    assert.deepEqual(r[1], null);
-    assert.deepEqual(r[2] ? r[2].id : '', people[1].id);
+    assert.deepStrictEqual(r[0] ? r[0].id : '', people[0].id);
+    assert.deepStrictEqual(r[1], null);
+    assert.deepStrictEqual(r[2] ? r[2].id : '', people[1].id);
   });
 
   test('basic query', async () => {
@@ -435,13 +492,13 @@ describe('Batches/Queries/Subscriptions', () => {
           pass += 1;
           if (pass === 1) {
             try {
-              assert.deepEqual(jsonStable(r), jsonStable(person));
+              assert.deepStrictEqual(jsonStable(r), jsonStable(person));
               await t.Person.update({ id: person.id, doc: { age: 100 } });
             } catch (e) {
               reject(e);
             }
           } else if (pass === 2) {
-            assert.deepEqual(r.age, 100);
+            assert.deepStrictEqual(r.age, 100);
             await t.Person.delete({ id: person.id });
             resolve();
           }
@@ -461,12 +518,12 @@ describe('Batches/Queries/Subscriptions', () => {
         async (docs) => {
           pass += 1;
           if (pass === 1) {
-            assert.deepEqual(docs[0] ? docs[0].id : '', people[0].id);
-            assert.deepEqual(docs[1], null);
-            assert.deepEqual(docs[2] ? docs[2].id : '', people[1].id);
+            assert.deepStrictEqual(docs[0] ? docs[0].id : '', people[0].id);
+            assert.deepStrictEqual(docs[1], null);
+            assert.deepStrictEqual(docs[2] ? docs[2].id : '', people[1].id);
             await t.Person.update({ id: people[0].id, doc: { name: 'Heber' } });
           } else if (pass === 2) {
-            assert.deepEqual(docs[0] ? docs[0].name : '', 'Heber');
+            assert.deepStrictEqual(docs[0] ? docs[0].name : '', 'Heber');
             resolve();
           }
         },
@@ -490,7 +547,7 @@ describe('Batches/Queries/Subscriptions', () => {
         weight: 100
       };
       try {
-        assert.deepEqual(0, Object.keys(t.Book._stats.activeSubscriptions).length);
+        assert.deepStrictEqual(0, Object.keys(t.Book._stats.activeSubscriptions).length);
 
         let ref = t.Person.querySubscription({ where: [{ age: ['>=', 10] }] });
         let sub = ref.subscribe(
@@ -508,7 +565,7 @@ describe('Batches/Queries/Subscriptions', () => {
                   .sort()
                   .join('');
                 // Check initial subscription
-                assert.deepEqual(x, y);
+                assert.deepStrictEqual(x, y);
 
                 await t.Person.add({
                   doc: extraPerson
@@ -523,7 +580,7 @@ describe('Batches/Queries/Subscriptions', () => {
                   .map((p) => p.id)
                   .sort()
                   .join('');
-                assert.deepEqual(x, y);
+                assert.deepStrictEqual(x, y);
                 sub.unsubscribe();
                 await t.Person.delete({ id: extraPerson.id });
                 resolve();
@@ -553,7 +610,7 @@ describe('Batches/Queries/Subscriptions', () => {
         weight: 100
       };
       try {
-        assert.deepEqual(0, Object.keys(t.Book._stats.activeSubscriptions).length);
+        assert.deepStrictEqual(0, Object.keys(t.Book._stats.activeSubscriptions).length);
 
         let ref = t.Person.multiQuerySubscription({
           queries: [{ where: [{ age: ['>=', 10] }] }, { where: [{ age: ['<=', 1] }] }]
@@ -573,7 +630,7 @@ describe('Batches/Queries/Subscriptions', () => {
                   .sort()
                   .join('');
                 // Check initial subscription
-                assert.deepEqual(x, y);
+                assert.deepStrictEqual(x, y);
 
                 await t.Person.add({
                   doc: extraPerson
@@ -588,7 +645,7 @@ describe('Batches/Queries/Subscriptions', () => {
                   .map((p) => p.id)
                   .sort()
                   .join('');
-                assert.deepEqual(x, y);
+                assert.deepStrictEqual(x, y);
                 sub.unsubscribe();
                 resolve();
               }

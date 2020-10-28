@@ -16,7 +16,8 @@ import {
   QuerySubscriptionResultSet,
   Change,
   FirestoreLiftDocSubscription,
-  FirestoreLiftDocsSubscription
+  FirestoreLiftDocsSubscription,
+  BatchTaskUpdateShallow
 } from './models';
 import { generatePushID, generateQueryRef, defaultEmptyTask, generateFirestorePathFromObject } from './misc';
 import { BatchRunner } from './BatchRunner';
@@ -27,6 +28,7 @@ import * as jsonStable from 'json-stable-stringify';
 export class FirestoreLiftCollection<DocModel extends { id: string }> {
   private readonly collection: string;
   private readonly batchRunner: BatchRunner;
+  private readonly enforceImmutability: boolean;
   public _stats: FirestoreLiftCollectionStats = {
     statsInitMS: Date.now(),
     docsFetched: 0,
@@ -56,9 +58,11 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     prefixIdWithCollection: boolean;
     disableIdGeneration: boolean;
     rootPropertiesToDisallowUpdatesOn?: string[];
+    enforceImmutability?: boolean;
   }) {
     this.collection = config.collection;
     this.batchRunner = config.batchRunner;
+    this.enforceImmutability = config.enforceImmutability === true;
     this.firestore = this.batchRunner.firestoreModule(this.batchRunner.app);
     this.prefixIdWithCollection = config.prefixIdWithCollection; // Add the collection name as a prefix to an id. Makes them easier to read
     this.disableIdGeneration = config.disableIdGeneration; // Some id's (such as account ids) you may not want firestore lift to ever generate an id because you want to force it to be assigned manually
@@ -138,6 +142,14 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                 value = this.firestoreSubscriptions[subscriptionId].currentValue || null;
               }
 
+              if (this.enforceImmutability) {
+                if (typeof Proxy !== 'undefined') {
+                  value = new Proxy(value, proxyPreventMutations);
+                } else {
+                  console.warn('Cannot enforce immutability since environment does not support Proxies');
+                }
+              }
+
               this.firestoreSubscriptions[subscriptionId].currentValue = value;
               for (let i in this.firestoreSubscriptions[subscriptionId].fns) {
                 this.firestoreSubscriptions[subscriptionId].fns[i](value);
@@ -212,7 +224,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
         });
         return {
           unsubscribe: () => {
-            unsubscribeFns.forEach((fn) => fn());
+            unsubscribeFns.forEach((thisFn) => thisFn());
           }
         };
       }
@@ -326,8 +338,8 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   }): Promise<QueryResultSet<DocModel>> {
     const results = await Promise.all(p.queries.map((q) => this.query(q)));
     let docs: DocModel[] = [];
-    results.forEach((p) => {
-      docs.push(...p.docs);
+    results.forEach((res) => {
+      docs.push(...res.docs);
     });
 
     if (p.mergeProcess?.runDedupe) {
@@ -574,7 +586,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     }
   }
 
-  // Updates/deletes parts of a document. Will merge with existing data.
+  // Updates/deletes parts of a document. Will deep merge with existing data. Equivalent to _.deepMerge(doc, docUpdate)
   async update(
     request: { id: string; doc: Optional<DocModel> },
     config?: { returnBatchTask?: boolean; allowWritesToAllPaths?: boolean }
@@ -596,6 +608,40 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
 
     let task: BatchTaskUpdate = {
       type: 'update',
+      id: request.id,
+      doc: request.doc,
+      collection: this.collection
+    };
+    this._stats.docsWritten += 1;
+    if (config && config.returnBatchTask) {
+      return task;
+    } else {
+      return await this.batchRunner.executeBatch([task]);
+    }
+  }
+
+  //Updates the document shallowly. Equivalent to Object.assign(doc, docUpdate)
+  async updateShallow(
+    request: { id: string; doc: Partial<DocModel> },
+    config?: { returnBatchTask?: boolean; allowWritesToAllPaths?: boolean }
+  ): Promise<BatchTaskUpdateShallow | BatchTaskEmpty> {
+    if (this.isDisabled) {
+      console.warn('Cannot update while firestoreLift disabled');
+      return defaultEmptyTask;
+    }
+
+    if (!config?.allowWritesToAllPaths) {
+      for (let i = 0; i < this.rootPropertiesToDisallowUpdatesOn.length; i++) {
+        if ((request.doc as any)[this.rootPropertiesToDisallowUpdatesOn[i]] !== undefined) {
+          throw new Error(
+            `You cannot run setPath because "${this.rootPropertiesToDisallowUpdatesOn[i]}" has been disabled as path you can write to. To override this set the "allowWritesToAllPaths" config option.`
+          );
+        }
+      }
+    }
+
+    const task: BatchTaskUpdateShallow = {
+      type: 'updateShallow',
       id: request.id,
       doc: request.doc,
       collection: this.collection
@@ -630,4 +676,20 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   setFirestoreLiftDisabledStatus(status: boolean) {
     this.isDisabled = status;
   }
+}
+if (typeof Proxy !== 'undefined') {
+  var proxyPreventMutations = {
+    get(target: any, key: string): any {
+      if (typeof target[key] === 'object' && target[key] !== null) {
+        return new Proxy(target[key], proxyPreventMutations);
+      } else {
+        return target[key];
+      }
+    },
+    set() {
+      console.info('Trying to mutate firestore lift data!!!! Download dev bundle');
+      console.error(new Error().stack);
+      throw new Error('Cannot mutate objects returned from Firestore Lift');
+    }
+  };
 }

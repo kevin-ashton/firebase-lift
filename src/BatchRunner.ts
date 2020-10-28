@@ -49,8 +49,9 @@ export class BatchRunner {
     return obj;
   }
 
-  async executeBatch(b: BatchTask[]): Promise<BatchTaskEmpty> {
-    let batch = this.firestoreModule(this.app).batch();
+  async executeBatch(b: BatchTask[], opts?: { transaction?: firebase.firestore.Transaction }) {
+    const batch = (opts?.transaction ?? this.firestoreModule(this.app).batch()) as firebase.firestore.WriteBatch;
+
     try {
       for (let i = 0; i < b.length; i++) {
         let task = b[i];
@@ -87,6 +88,10 @@ export class BatchRunner {
             newObj = this.scrubDataPreWrite({ obj: task.doc, removeEmptyObjects: true });
             batch.set(ref, newObj, { merge: true });
             break;
+          case 'updateShallow':
+            newObj = this.scrubDataPreWrite({ obj: task.doc, removeEmptyObjects: false });
+            batch.update(ref, newObj);
+            break;
           case 'delete':
             batch.delete(ref);
             break;
@@ -96,10 +101,12 @@ export class BatchRunner {
         }
       }
 
-      await batch.commit();
-
+      if (!opts?.transaction) {
+        return batch.commit().then(() => defaultEmptyTask);
+      } else {
+        return defaultEmptyTask;
+      }
       // Returning an empty task makes it easier for the helper functions (.add, .update) so they always return a batch type. Makes it so we don't have to check for undefined
-      return defaultEmptyTask;
     } catch (e) {
       console.error(e);
       throw e;

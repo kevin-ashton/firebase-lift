@@ -28,6 +28,11 @@ export interface Book {
   createdAtMS: number;
   updatedAtMS: number;
   title: string;
+  nestedExample: {
+    foo1: string;
+    foo2: number;
+    foo3?: string;
+  };
   totalPages: number;
   derived?: {
     a: string;

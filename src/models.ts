@@ -21,6 +21,7 @@ export interface FirestoreLiftInitConfig {
   collections: Record<string, CollectionConfig>;
   firebaseApp: firebase.app.App;
   firestoreModule: typeof firebase.firestore; // We need to import the actual module since we often use firebase-admin on the server and need to access certain fields for delete and other things
+  enforceImmutability?: boolean;
 }
 
 export interface FirestoreLiftStats {
@@ -157,6 +158,11 @@ export interface BatchTaskUpdate extends BatchTaskRoot {
   doc: any;
 }
 
+export interface BatchTaskUpdateShallow extends BatchTaskRoot {
+  type: 'updateShallow';
+  doc: any;
+}
+
 export interface BatchTaskDelete extends BatchTaskRoot {
   type: 'delete';
 }
@@ -166,6 +172,7 @@ export type BatchTask =
   | BatchTaskSetPath
   | BatchTaskSet
   | BatchTaskUpdate
+  | BatchTaskUpdateShallow
   | BatchTaskDelete
   | BatchTaskEmpty;
 
