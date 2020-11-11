@@ -19,7 +19,7 @@ export function createRtdbLift<T>(config: RtdbConfig<T>): T & RootRtdbLift {
   };
 
   Object.keys(config.nodes).forEach((key) => {
-    r[key] = (path: string) => db.ref(path);
+    r[key] = (path: string) => db.ref(`${key}/${path}`);
   });
 
   return r;
