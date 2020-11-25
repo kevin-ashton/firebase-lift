@@ -181,8 +181,8 @@ describe('Basic CRUD', () => {
     const person = await t.Person.getDoc(person1.id);
     // Make sure the other two nodes have been removed
     if (person) {
-      assert.equal(Object.keys(person.favFoods).length, 1);
-      assert.equal(person.favFoods.italian, 'pizza');
+      assert.strictEqual(Object.keys(person.favFoods).length, 1);
+      assert.strictEqual(person.favFoods.italian, 'pizza');
     } else {
       throw 'No person found';
     }
@@ -191,13 +191,13 @@ describe('Basic CRUD', () => {
   test('increment field', async () => {
     await t.Person.update({ id: person1.id, doc: { age: t._MagicIncrementValue } });
     const person = await t.Person.getDoc(person1.id);
-    assert.equal(person?.age, person1.age + 1);
+    assert.strictEqual(person?.age, person1.age + 1);
   });
 
   test('delete field', async () => {
     await t.Person.update({ id: person1.id, doc: { name: t._MagicDeleteValue } });
     const person = await t.Person.getDoc(person1.id);
-    assert.equal(person && person.name === undefined, true);
+    assert.strictEqual(person && person.name === undefined, true);
   });
 });
 
@@ -268,12 +268,12 @@ describe('Batches/Queries/Subscriptions', () => {
 
   test('basic query', async () => {
     const r = await t.Person.query({});
-    assert.equal(r.docs.length, people.length);
+    assert.strictEqual(r.docs.length, people.length);
   });
   test('single where condition', async () => {
     const expectedFood = 'cheese burger';
     const r = await t.Person.query({ where: [{ favFoods: { american: ['==', expectedFood] } }] });
-    assert.equal(r.docs.length, people.filter((p) => p.favFoods.american === expectedFood).length);
+    assert.strictEqual(r.docs.length, people.filter((p) => p.favFoods.american === expectedFood).length);
   });
   test('multiple where conditions', async () => {
     const expectedFood = 'cheese burger';
@@ -281,7 +281,7 @@ describe('Batches/Queries/Subscriptions', () => {
     const r = await t.Person.query({
       where: [{ favFoods: { american: ['==', expectedFood] } }, { age: ['<=', maxExpectedAge] }]
     });
-    assert.equal(
+    assert.strictEqual(
       r.docs.length,
       people.filter((p) => p.favFoods.american === expectedFood && p.age <= maxExpectedAge).length
     );
@@ -292,14 +292,14 @@ describe('Batches/Queries/Subscriptions', () => {
     const r = await t.Person.query({
       where: [{ age: ['in', inArr] }]
     });
-    assert.equal(r.docs.length, people.filter((p) => inArr.includes(p.age)).length);
+    assert.strictEqual(r.docs.length, people.filter((p) => inArr.includes(p.age)).length);
   });
 
   test('orderBy (asc)', async () => {
     const r = await t.Person.query({
       orderBy: [{ pathObj: { age: true } }]
     });
-    assert.equal(
+    assert.strictEqual(
       r.docs.map((p) => p.id).join(''),
       people
         .sort((a, b) => a.age - b.age)
@@ -311,7 +311,7 @@ describe('Batches/Queries/Subscriptions', () => {
     const r = await t.Person.query({
       orderBy: [{ pathObj: { age: true }, dir: 'desc' }]
     });
-    assert.equal(
+    assert.strictEqual(
       r.docs.map((p) => p.id).join(''),
       people
         .sort((a, b) => b.age - a.age)
@@ -320,12 +320,13 @@ describe('Batches/Queries/Subscriptions', () => {
     );
   });
 
-  test('orderBy with startAfterValue', async () => {
+  test('orderBy with startAfter', async () => {
     const r = await t.Person.query({
       orderBy: [{ pathObj: { age: true } }],
-      startAfterValue: [10]
+      startAfter: [10]
     });
-    assert.equal(
+
+    assert.strictEqual(
       r.docs.map((p) => p.id).join(''),
       people
         .sort((a, b) => a.age - b.age)
@@ -335,12 +336,12 @@ describe('Batches/Queries/Subscriptions', () => {
     );
   });
 
-  test('orderBy with startAtValue', async () => {
+  test('orderBy with startAt', async () => {
     const r = await t.Person.query({
       orderBy: [{ pathObj: { age: true } }],
-      startAtValue: [5]
+      startAt: [5]
     });
-    assert.equal(
+    assert.strictEqual(
       r.docs.map((p) => p.id).join(''),
       people
         .sort((a, b) => a.age - b.age)
@@ -350,12 +351,12 @@ describe('Batches/Queries/Subscriptions', () => {
     );
   });
 
-  test('orderBy with endBeforeValue', async () => {
+  test('orderBy with endBefore', async () => {
     const r = await t.Person.query({
       orderBy: [{ pathObj: { age: true } }],
-      endBeforeValue: [10]
+      endBefore: [10]
     });
-    assert.equal(
+    assert.strictEqual(
       r.docs.map((p) => p.id).join(''),
       people
         .sort((a, b) => a.age - b.age)
@@ -365,12 +366,12 @@ describe('Batches/Queries/Subscriptions', () => {
     );
   });
 
-  test('orderBy with endAtValue', async () => {
+  test('orderBy with endAt', async () => {
     const r = await t.Person.query({
       orderBy: [{ pathObj: { age: true } }],
-      endAtValue: [5]
+      endAt: [5]
     });
-    assert.equal(
+    assert.strictEqual(
       r.docs.map((p) => p.id).join(''),
       people
         .sort((a, b) => a.age - b.age)
@@ -384,7 +385,7 @@ describe('Batches/Queries/Subscriptions', () => {
     const r = await t.Person.query({
       limit: 2
     });
-    assert.equal(r.docs.length, 2);
+    assert.strictEqual(r.docs.length, 2);
   });
 
   test('pagination', async () => {
@@ -405,19 +406,44 @@ describe('Batches/Queries/Subscriptions', () => {
       }
     }
 
-    assert.equal(result.length, people.length);
-    assert.equal(totalResultSets, Math.ceil(people.length / batchSize));
+    assert.strictEqual(result.length, people.length);
+    assert.strictEqual(totalResultSets, Math.ceil(people.length / batchSize));
+  });
+
+  test('pagination w/ rawdocs', async () => {
+    const result: Person[] = [];
+    let batchSize = 2;
+    let totalResultSets = 0;
+    let lastRawDoc: any;
+
+    while (true) {
+      totalResultSets += 1;
+      let pendingQuery: SimpleQuery<Person> = {
+        limit: batchSize
+      };
+      if (lastRawDoc) {
+        pendingQuery.startAfter = [lastRawDoc];
+      }
+      const r = await t.Person.query(pendingQuery);
+      result.push(...r.docs);
+      if (r.rawDocs.length > 0) {
+        lastRawDoc = r.rawDocs[r.rawDocs.length - 1];
+      } else {
+        break;
+      }
+    }
+
+    assert.strictEqual(result.length, people.length);
   });
 
   test('multi query', async () => {
-    const expectedFood = 'cheese burger';
     const r = await t.Person.multiQuery({
       queries: [{ where: [{ age: ['==', 1] }] }, { where: [{ favFoods: { american: ['==', 'cheese burger'] } }] }]
     });
 
     const q1 = people.filter((p) => p.age === 1);
     const q2 = people.filter((p) => p.favFoods.american === 'cheese burger');
-    assert.equal(
+    assert.strictEqual(
       r.docs
         .map((d) => d.id)
         .sort()
@@ -437,7 +463,7 @@ describe('Batches/Queries/Subscriptions', () => {
       }
     });
 
-    assert.equal(
+    assert.strictEqual(
       r.docs.map((d) => d.id).join(),
       _.sortBy(
         people.filter((p) => p.age >= 3),
@@ -452,7 +478,10 @@ describe('Batches/Queries/Subscriptions', () => {
     const r = await t.Person.multiQuery({
       queries: [{ where: [{ age: ['>=', 3] }] }, { where: [{ age: ['>=', 10] }] }]
     });
-    assert.equal(r.docs.length, [...people.filter((p) => p.age >= 3), ...people.filter((p) => p.age >= 10)].length);
+    assert.strictEqual(
+      r.docs.length,
+      [...people.filter((p) => p.age >= 3), ...people.filter((p) => p.age >= 10)].length
+    );
   });
 
   test('multi query with dedupe', async () => {
@@ -462,7 +491,7 @@ describe('Batches/Queries/Subscriptions', () => {
         runDedupe: true
       }
     });
-    assert.equal(
+    assert.strictEqual(
       r.docs.length,
       _.uniqBy([...people.filter((p) => p.age >= 3), ...people.filter((p) => p.age >= 10)], 'id').length
     );

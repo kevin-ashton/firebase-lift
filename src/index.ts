@@ -1,6 +1,7 @@
 export { createFirestoreLift } from './FirestoreLift';
 export {
   BatchTask,
+  SimpleQuery,
   FirestoreLiftInitConfig,
   FirestoreLiftDocSubscription,
   FirestoreLiftDocsSubscription,

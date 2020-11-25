@@ -39,11 +39,13 @@ export type Change<T> = { doc: T; changeType: 'added' | 'modified' | 'removed' }
 
 export type QueryResultSet<DocModel> = {
   docs: DocModel[];
+  rawDocs: Array<firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>>;
   nextQuery?: SimpleQuery<DocModel>;
 };
 
 export type QuerySubscriptionResultSet<DocModel> = {
   docs: DocModel[];
+  rawDocs: Array<firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>>;
   changes: Change<DocModel>[];
   metadata: firebase.firestore.SnapshotMetadata;
 };
@@ -82,16 +84,19 @@ export type FirestoreLiftDocsSubscription<DocModel> = {
 type WhereFilter<DocModel> = OptionalQuery<DocModel>;
 type WhereFilterOp = '<' | '<=' | '==' | '>=' | '>';
 type OrderByDirection = 'desc' | 'asc';
-export type startEndAtValueTypes = string | number;
+export type startEndAtTypes =
+  | string
+  | number
+  | firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>;
 
 export interface SimpleQuery<DocModel> {
   limit?: number;
   where?: WhereFilter<DocModel>[];
   orderBy?: { pathObj: OptionalFlex<DocModel>; dir?: OrderByDirection }[];
-  startAtValue?: startEndAtValueTypes[];
-  startAfterValue?: startEndAtValueTypes[];
-  endAtValue?: startEndAtValueTypes[];
-  endBeforeValue?: startEndAtValueTypes[];
+  startAt?: startEndAtTypes[];
+  startAfter?: startEndAtTypes[];
+  endAt?: startEndAtTypes[];
+  endBefore?: startEndAtTypes[];
   _internalStartAfterDocId?: any; // Used for pagination. If defined then we ignore startAt
 }
 

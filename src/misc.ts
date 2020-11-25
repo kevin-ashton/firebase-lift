@@ -39,20 +39,20 @@ export function generateQueryRef<ItemModel>(
     }
   }
 
-  if (queryRequest.startAtValue) {
-    query = query.startAt(...queryRequest.startAtValue) as any;
+  if (queryRequest.startAt) {
+    query = query.startAt(...queryRequest.startAt) as any;
   }
 
-  if (queryRequest.startAfterValue) {
-    query = query.startAfter(...queryRequest.startAfterValue) as any;
+  if (queryRequest.startAfter) {
+    query = query.startAfter(...queryRequest.startAfter) as any;
   }
 
-  if (queryRequest.endAtValue) {
-    query = query.endAt(...queryRequest.endAtValue) as any;
+  if (queryRequest.endAt) {
+    query = query.endAt(...queryRequest.endAt) as any;
   }
 
-  if (queryRequest.endBeforeValue) {
-    query = query.endBefore(...queryRequest.endBeforeValue) as any;
+  if (queryRequest.endBefore) {
+    query = query.endBefore(...queryRequest.endBefore) as any;
   }
 
   // Lock it to something to prevent massive batches but also to make it easier to detect if we need to paginate

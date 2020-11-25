@@ -261,6 +261,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
 
               let value: QuerySubscriptionResultSet<DocModel> = {
                 docs: docs,
+                rawDocs: snapshot.docs,
                 changes: changes as any,
                 metadata: snapshot.metadata
               };
@@ -338,8 +339,10 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   }): Promise<QueryResultSet<DocModel>> {
     const results = await Promise.all(p.queries.map((q) => this.query(q)));
     let docs: DocModel[] = [];
+    let rawDocs: Array<firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>> = [];
     results.forEach((res) => {
       docs.push(...res.docs);
+      rawDocs.push(...res.rawDocs);
     });
 
     if (p.mergeProcess?.runDedupe) {
@@ -355,7 +358,8 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     }
 
     return {
-      docs
+      docs,
+      rawDocs
     };
   }
 
@@ -367,6 +371,9 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
       subscribe: (fn, errorFn) => {
         const unsubscribeFns: any[] = [];
         const currentValues: DocModel[][] = p.queries.map(() => []);
+        const currentRawDocs: Array<Array<
+          firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>
+        >> = p.queries.map(() => []);
         const hasFiredOnceTracker: Record<string, true> = {};
         let hasFiredOnce = false;
         p.queries.forEach((q, index) => {
@@ -377,8 +384,10 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                 hasFiredOnceTracker[index] = true;
               }
               currentValues[index] = result.docs;
+              currentRawDocs[index] = result.rawDocs;
               if (Object.keys(hasFiredOnceTracker).length === p.queries.length) {
                 let docs = _.flatten(currentValues);
+                let rawDocs = _.flatten(currentRawDocs);
 
                 if (p.mergeProcess?.runDedupe) {
                   docs = _.uniqBy(docs, 'id');
@@ -391,7 +400,12 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                     docs.reverse();
                   }
                 }
-                fn({ docs, changes: hasFiredOnce ? result.changes : [], metadata: result.metadata });
+                fn({
+                  docs,
+                  changes: hasFiredOnce ? result.changes : [],
+                  metadata: result.metadata,
+                  rawDocs: rawDocs
+                });
                 hasFiredOnce = true;
               }
             },
@@ -413,7 +427,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   async query(query: SimpleQuery<DocModel>): Promise<QueryResultSet<DocModel>> {
     if (this.isDisabled) {
       console.warn('Cannot query while firestoreLift disabled');
-      return { docs: [] };
+      return { docs: [], rawDocs: [] };
     }
 
     try {
@@ -430,7 +444,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
         results.push(doc);
       }
 
-      let result: QueryResultSet<DocModel> = { docs: results };
+      let result: QueryResultSet<DocModel> = { docs: results, rawDocs: res.docs };
 
       if (res.size === query.limit) {
         let paginationQuery = { ...query };
