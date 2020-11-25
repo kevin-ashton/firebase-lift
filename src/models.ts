@@ -7,6 +7,7 @@ export interface FirestoreLiftRoot {
   _RawFirestore: firebase.firestore.Firestore;
   _BatchRunner: BatchRunner;
   _MagicDeleteValue: any;
+  _MagicServerTimestamp: any;
   _MagicIncrementValue: any;
 }
 
