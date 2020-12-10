@@ -202,26 +202,32 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     return {
       subscribe: (fn, errorFn) => {
         const unsubscribeFns: any[] = [];
-        const currentValue: Array<DocModel | null> = docIds.map(() => null);
-        const hasFiredOnceTracker: Record<string, true> = {};
-        docIds.forEach((id, index) => {
-          const subRef = this.docSubscription(id);
-          const sub = subRef.subscribe(
-            (doc) => {
-              if (!hasFiredOnceTracker[index]) {
-                hasFiredOnceTracker[index] = true;
+        if (docIds.length === 0) {
+          // No docs to subscribe to so just return an empty array
+          fn([]);
+        } else {
+          const currentValue: Array<DocModel | null> = docIds.map(() => null);
+          const hasFiredOnceTracker: Record<string, true> = {};
+          docIds.forEach((id, index) => {
+            const subRef = this.docSubscription(id);
+            const sub = subRef.subscribe(
+              (doc) => {
+                if (!hasFiredOnceTracker[index]) {
+                  hasFiredOnceTracker[index] = true;
+                }
+                currentValue[index] = doc;
+                if (Object.keys(hasFiredOnceTracker).length === docIds.length) {
+                  fn(currentValue);
+                }
+                unsubscribeFns.push(sub);
+              },
+              (e) => {
+                errorFn(e);
               }
-              currentValue[index] = doc;
-              if (Object.keys(hasFiredOnceTracker).length === docIds.length) {
-                fn(currentValue);
-              }
-              unsubscribeFns.push(sub);
-            },
-            (e) => {
-              errorFn(e);
-            }
-          );
-        });
+            );
+          });
+        }
+
         return {
           unsubscribe: () => {
             unsubscribeFns.forEach((thisFn) => thisFn());
@@ -370,51 +376,62 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     return {
       subscribe: (fn, errorFn) => {
         const unsubscribeFns: any[] = [];
-        const currentValues: DocModel[][] = p.queries.map(() => []);
-        const currentRawDocs: Array<Array<
-          firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>
-        >> = p.queries.map(() => []);
-        const hasFiredOnceTracker: Record<string, true> = {};
-        let hasFiredOnce = false;
-        p.queries.forEach((q, index) => {
-          const subRef = this.querySubscription(q);
-          const sub = subRef.subscribe(
-            (result) => {
-              if (!hasFiredOnceTracker[index]) {
-                hasFiredOnceTracker[index] = true;
-              }
-              currentValues[index] = result.docs;
-              currentRawDocs[index] = result.rawDocs;
-              if (Object.keys(hasFiredOnceTracker).length === p.queries.length) {
-                let docs = _.flatten(currentValues);
-                let rawDocs = _.flatten(currentRawDocs);
-
-                if (p.mergeProcess?.runDedupe) {
-                  docs = _.uniqBy(docs, 'id');
+        if (p.queries.length === 0) {
+          // Since no queries we just return an empty array
+          fn({
+            changes: [],
+            docs: [],
+            metadata: { fromCache: false, hasPendingWrites: false, isEqual: false as any },
+            rawDocs: []
+          });
+        } else {
+          const currentValues: DocModel[][] = p.queries.map(() => []);
+          const currentRawDocs: Array<Array<
+            firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>
+          >> = p.queries.map(() => []);
+          const hasFiredOnceTracker: Record<string, true> = {};
+          let hasFiredOnce = false;
+          p.queries.forEach((q, index) => {
+            const subRef = this.querySubscription(q);
+            const sub = subRef.subscribe(
+              (result) => {
+                if (!hasFiredOnceTracker[index]) {
+                  hasFiredOnceTracker[index] = true;
                 }
+                currentValues[index] = result.docs;
+                currentRawDocs[index] = result.rawDocs;
+                if (Object.keys(hasFiredOnceTracker).length === p.queries.length) {
+                  let docs = _.flatten(currentValues);
+                  let rawDocs = _.flatten(currentRawDocs);
 
-                if (p.mergeProcess?.orderBy) {
-                  docs = _.sortBy(docs, p.mergeProcess.orderBy.sortKey);
-
-                  if (p.mergeProcess.orderBy.dir === 'desc') {
-                    docs.reverse();
+                  if (p.mergeProcess?.runDedupe) {
+                    docs = _.uniqBy(docs, 'id');
                   }
+
+                  if (p.mergeProcess?.orderBy) {
+                    docs = _.sortBy(docs, p.mergeProcess.orderBy.sortKey);
+
+                    if (p.mergeProcess.orderBy.dir === 'desc') {
+                      docs.reverse();
+                    }
+                  }
+                  fn({
+                    docs,
+                    changes: hasFiredOnce ? result.changes : [],
+                    metadata: result.metadata,
+                    rawDocs: rawDocs
+                  });
+                  hasFiredOnce = true;
                 }
-                fn({
-                  docs,
-                  changes: hasFiredOnce ? result.changes : [],
-                  metadata: result.metadata,
-                  rawDocs: rawDocs
-                });
-                hasFiredOnce = true;
+              },
+              (e) => {
+                errorFn(e);
               }
-            },
-            (e) => {
-              errorFn(e);
-            }
-          );
-          unsubscribeFns.push(sub.unsubscribe);
-        });
+            );
+            unsubscribeFns.push(sub.unsubscribe);
+          });
+        }
+
         return {
           unsubscribe: () => {
             unsubscribeFns.forEach((f) => f());

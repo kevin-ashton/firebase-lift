@@ -266,6 +266,11 @@ describe('Batches/Queries/Subscriptions', () => {
     assert.deepStrictEqual(r[2] ? r[2].id : '', people[1].id);
   });
 
+  test('basic getDocs (empty array of docIds)', async () => {
+    const r = await t.Person.getDocs([]);
+    assert.deepStrictEqual(r.length, 0);
+  });
+
   test('basic query', async () => {
     const r = await t.Person.query({});
     assert.strictEqual(r.docs.length, people.length);
@@ -455,6 +460,11 @@ describe('Batches/Queries/Subscriptions', () => {
     );
   });
 
+  test('multi query (empty array of queries)', async () => {
+    const r = await t.Person.multiQuery({ queries: [] });
+    assert.strictEqual(r.docs.length, 0);
+  });
+
   test('multi query with sort', async () => {
     const r = await t.Person.multiQuery({
       queries: [{ where: [{ age: ['>=', 3] }] }],
@@ -539,6 +549,21 @@ describe('Batches/Queries/Subscriptions', () => {
     });
   });
 
+  test('doc subscription (id does not exist)', () => {
+    return new Promise(async (resolve, reject) => {
+      const subRef = t.Person.docSubscription('id_does_not_exist');
+      subRef.subscribe(
+        async (r) => {
+          assert.deepStrictEqual(r, null);
+          resolve();
+        },
+        (e) => {
+          reject(e);
+        }
+      );
+    });
+  });
+
   test('docs subscription', () => {
     return new Promise(async (resolve, reject) => {
       const ref = t.Person.docsSubscription([people[0].id, 'SHOULD_NOT_EXIST_ID', people[1].id]);
@@ -555,6 +580,21 @@ describe('Batches/Queries/Subscriptions', () => {
             assert.deepStrictEqual(docs[0] ? docs[0].name : '', 'Heber');
             resolve();
           }
+        },
+        (e) => {
+          reject(e);
+        }
+      );
+    });
+  });
+
+  test('docs subscription (empty array)', () => {
+    return new Promise(async (resolve, reject) => {
+      const ref = t.Person.docsSubscription([]);
+      ref.subscribe(
+        async (docs) => {
+          assert.deepStrictEqual(docs.length, 0);
+          resolve();
         },
         (e) => {
           reject(e);
@@ -681,6 +721,25 @@ describe('Batches/Queries/Subscriptions', () => {
             } catch (e) {
               reject(e);
             }
+          },
+          (e) => reject(e)
+        );
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
+
+  test('multi query subscription (empty array)', () => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        let ref = t.Person.multiQuerySubscription({
+          queries: []
+        });
+        ref.subscribe(
+          async (val) => {
+            assert.strictEqual(val.docs.length, 0);
+            resolve();
           },
           (e) => reject(e)
         );
