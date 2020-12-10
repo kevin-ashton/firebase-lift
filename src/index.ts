@@ -2,10 +2,17 @@ export { createFirestoreLift } from './FirestoreLift';
 export {
   BatchTask,
   SimpleQuery,
+  QueryResultSet,
+  QuerySubscriptionResultSet,
+  OptionalQuery,
+  Optional,
   FirestoreLiftInitConfig,
   FirestoreLiftDocSubscription,
   FirestoreLiftDocsSubscription,
-  FirestoreLiftQuerySubscription
+  FirestoreLiftQuerySubscription,
+  MagicDeleteString,
+  MagicIncrementString,
+  MagicServerTimestampString
 } from './models';
 export { FirestoreLiftCollection } from './FirestoreLiftCollection';
 export { createRtdbLift, TypedFirebaseObjectOrPrimativeRefGenerator } from './RTDB';
