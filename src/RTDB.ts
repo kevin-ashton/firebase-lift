@@ -1,4 +1,4 @@
-import * as firebase from 'firebase';
+import firebase from 'firebase';
 
 export type TypedFirebaseObjectOrPrimativeRefGenerator<T> = (path: string) => TypedFirebaseObjectOrPrimativeRef<T>;
 

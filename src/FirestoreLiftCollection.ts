@@ -1,4 +1,4 @@
-import * as firebase from 'firebase';
+import firebase from 'firebase';
 import {
   BatchTaskAdd,
   BatchTaskDelete,
@@ -156,17 +156,19 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
               }
             },
             (err) => {
-              let msg = `${err.message} in firestore-lift subscription on collection ${this.collection} with docId:${docId}`;
-              // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
-              console.error(msg);
-              let detailedError = new Error(msg);
-              detailedError.stack = subscriptionStackTrace;
-              if (Object.keys(this.firestoreSubscriptions[subscriptionId].errorFns).length > 0) {
-                for (let i in this.firestoreSubscriptions[subscriptionId].errorFns) {
-                  this.firestoreSubscriptions[subscriptionId].errorFns[i](detailedError);
+              if (!err.message.includes('offline')) {
+                let msg = `${err.message} in firestore-lift subscription on collection ${this.collection} with docId:${docId}`;
+                // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
+                console.error(msg);
+                let detailedError = new Error(msg);
+                detailedError.stack = subscriptionStackTrace;
+                if (Object.keys(this.firestoreSubscriptions[subscriptionId].errorFns).length > 0) {
+                  for (let i in this.firestoreSubscriptions[subscriptionId].errorFns) {
+                    this.firestoreSubscriptions[subscriptionId].errorFns[i](detailedError);
+                  }
+                } else {
+                  console.error(detailedError);
                 }
-              } else {
-                console.error(detailedError);
               }
             }
           );
@@ -219,12 +221,13 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                 if (Object.keys(hasFiredOnceTracker).length === docIds.length) {
                   fn(currentValue);
                 }
-                unsubscribeFns.push(sub);
               },
               (e) => {
                 errorFn(e);
               }
             );
+
+            unsubscribeFns.push(sub.unsubscribe);
           });
         }
 
@@ -299,8 +302,11 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
               let msg = `${err.message} in firestore-lift subscription on collection ${
                 this.collection
               } with query:${JSON.stringify(query)}`;
-              // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
-              console.error(msg);
+              if (!err.message.includes('offline')) {
+                // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
+                console.error(msg);
+              }
+
               let detailedError = new Error(msg);
               detailedError.stack = subscriptionStackTrace;
               if (Object.keys(this.firestoreSubscriptions[subscriptionId].errorFns).length > 0) {
@@ -308,7 +314,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                   this.firestoreSubscriptions[subscriptionId].errorFns[i](detailedError);
                 }
               } else {
-                console.error(detailedError);
+                throw detailedError;
               }
             }
           );
@@ -473,11 +479,13 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
       this._stats.docsFetched += result.docs.length;
       return result;
     } catch (err) {
-      let msg = `${err.message} in firestore-lift subscription on collection ${
-        this.collection
-      } with query:${JSON.stringify(query)}`;
-      // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
-      console.error(msg);
+      if (!err.message.includes('offline')) {
+        let msg = `${err.message} in firestore-lift subscription on collection ${
+          this.collection
+        } with query:${JSON.stringify(query)}`;
+        // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
+        console.error(msg);
+      }
       throw err;
     }
   }
@@ -501,9 +509,11 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
               return null;
             }
           } catch (err) {
-            let msg = `${err.message} in firestore-lift get action ${this.collection} with id:${ids[i]}`;
-            // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
-            console.error(msg);
+            if (!err.message.includes('offline')) {
+              let msg = `${err.message} in firestore-lift get action ${this.collection} with id:${ids[i]}`;
+              // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
+              console.error(msg);
+            }
             throw err;
           }
         })()

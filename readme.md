@@ -37,7 +37,7 @@ import {
   FirestoreLiftCollection,
   TypedFirebaseObjectOrPrimativeRefGenerator,
 } from 'firebase-lift';
-import * as firebase from 'firebase';
+import  firebase from 'firebase';
 
 interface Person {
   id: string;

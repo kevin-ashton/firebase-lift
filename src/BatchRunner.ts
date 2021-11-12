@@ -1,4 +1,4 @@
-import * as firebase from 'firebase';
+import firebase from 'firebase';
 import {
   BatchTask,
   BatchTaskEmpty,
@@ -50,7 +50,9 @@ export class BatchRunner {
   }
 
   async executeBatch(b: BatchTask[], opts?: { transaction?: firebase.firestore.Transaction }) {
-    const batch = (opts?.transaction ?? this.firestoreModule(this.app).batch()) as firebase.firestore.WriteBatch;
+    const firestoreInstance = this.firestoreModule('isFakeFirestoreApp' in this.app ? undefined : this.app);
+
+    const batch = (opts?.transaction ?? firestoreInstance.batch()) as firebase.firestore.WriteBatch;
 
     try {
       for (let i = 0; i < b.length; i++) {
@@ -62,7 +64,7 @@ export class BatchRunner {
         if (!task.id) {
           throw Error(`Unable to process item. Lacks an id. Collection: ${task.collection}. Task Type: ${task.type}`);
         }
-        let ref = this.firestoreModule(this.app).collection(task.collection).doc(task.id);
+        let ref = firestoreInstance.collection(task.collection).doc(task.id);
 
         let newObj;
         switch (task.type) {
