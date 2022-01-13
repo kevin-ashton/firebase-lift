@@ -479,7 +479,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
       this._stats.docsFetched += result.docs.length;
       return result;
     } catch (err) {
-      if (!err.message.includes('offline')) {
+      if (err instanceof Error && !err.message.includes('offline')) {
         let msg = `${err.message} in firestore-lift subscription on collection ${
           this.collection
         } with query:${JSON.stringify(query)}`;
@@ -509,7 +509,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
               return null;
             }
           } catch (err) {
-            if (!err.message.includes('offline')) {
+            if (err instanceof Error && !err.message.includes('offline')) {
               let msg = `${err.message} in firestore-lift get action ${this.collection} with id:${ids[i]}`;
               // Do NOT delete the console.error. Propagation beyond this point is too inconsistent. This would have saved many hours of dev work with swallowed errors
               console.error(msg);

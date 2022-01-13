@@ -1,13 +1,13 @@
 {
-  "name": "firebase-lift",
-  "version": "0.1.0",
+  "name": "@ollie-sports/firebase-lift",
+  "version": "0.0.5",
   "description": "Firebase provides a variety of tools that are amazing. This wraps various aspects of the api.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "node dist/tests/index.js",
     "ts-build": "tsc ",
-    "ts-watch": "tsc -w",
+    "ts-watch": "tsc -w --preserveWatchOutput",
     "start": "firebase emulators:start"
   },
   "devDependencies": {
@@ -18,11 +18,11 @@
     "@types/shortid": "0.0.29",
     "nano-test-runner": "^1.2.0",
     "prettier": "^2.0.5",
-    "typescript": "^3.9.3"
+    "typescript": "4.5.4"
   },
   "dependencies": {
     "@babel/runtime": "7.8.4",
-    "firebase": "8.7.1",
+    "firebase": "8.10.0",
     "json-stable-stringify": "^1.0.1",
     "lodash": "4.17.15",
     "md5": "^2.2.1",
