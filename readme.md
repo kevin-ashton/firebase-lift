@@ -35,7 +35,7 @@ import {
   createRtdbLift,
   createFirestoreLift,
   FirestoreLiftCollection,
-  TypedFirebaseObjectOrPrimativeRefGenerator,
+  TypedFirebaseObjectOrPrimitiveRefGenerator,
 } from 'firebase-lift';
 import  firebase from 'firebase';
 
@@ -86,8 +86,8 @@ const firestoreLiftExample = createFirestoreLift<{
 const rtdbLiftExample = createRtdbLift({
   firebaseApp: app,
   nodes: {
-    Heartbeat: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Heartbeat>,
-    DeviceInfo: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<DeviceInfo>
+    Heartbeat: (null as unknown) as TypedFirebaseObjectOrPrimitiveRefGenerator<Heartbeat>,
+    DeviceInfo: (null as unknown) as TypedFirebaseObjectOrPrimitiveRefGenerator<DeviceInfo>
   }
 });
 

@@ -6,7 +6,7 @@ import 'firebase/compat/firestore';
 
 import { createFirestoreLift } from '../FirestoreLift';
 import { clearFirestoreData } from '@firebase/testing';
-import { TypedFirebaseObjectOrPrimativeRefGenerator, createRtdbLift } from '../RTDB';
+import { TypedFirebaseObjectOrPrimitiveRefGenerator, createRtdbLift } from '../RTDB';
 
 /* *****************
   Demo Models
@@ -82,8 +82,8 @@ export function getTestFirestoreLift() {
 
 export function getTestRtdbLift() {
   const nodes = {
-    account: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Person>,
-    book: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Book>
+    account: (null as unknown) as TypedFirebaseObjectOrPrimitiveRefGenerator<Person>,
+    book: (null as unknown) as TypedFirebaseObjectOrPrimitiveRefGenerator<Book>
   };
 
   return createRtdbLift({ firebaseApp: app, nodes });

@@ -15,4 +15,4 @@ export {
   MagicServerTimestampString
 } from './models';
 export { FirestoreLiftCollection } from './FirestoreLiftCollection';
-export { createRtdbLift, TypedFirebaseObjectOrPrimativeRefGenerator } from './RTDB';
+export { createRtdbLift, TypedFirebaseObjectOrPrimitiveRefGenerator } from './RTDB';

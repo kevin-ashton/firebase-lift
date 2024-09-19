@@ -1,6 +1,6 @@
 import firebase from 'firebase/compat/app';
 
-export type TypedFirebaseObjectOrPrimativeRefGenerator<T> = (path: string) => TypedFirebaseObjectOrPrimativeRef<T>;
+export type TypedFirebaseObjectOrPrimitiveRefGenerator<T> = (path: string) => TypedFirebaseObjectOrPrimitiveRef<T>;
 
 export interface RootRtdbLift {
   _RawRtdb: firebase.database.Database;
@@ -25,7 +25,7 @@ export function createRtdbLift<T>(config: RtdbConfig<T>): T & RootRtdbLift {
   return r;
 }
 
-type TypedFirebaseObjectOrPrimativeRef<Obj extends {}> = Omit<
+type TypedFirebaseObjectOrPrimitiveRef<Obj extends {}> = Omit<
   firebase.database.Reference,
   'set' | 'update' | 'once' | 'on'
 > & {
