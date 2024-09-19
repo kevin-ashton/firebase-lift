@@ -23,7 +23,7 @@ Firebase provides a variety of tools that are amazing. This wraps various aspect
 ## Realtime Database
 
 ### Features
-* Add some types for objects/primatives
+* Add some types for objects/primitives
 
 ### Limitations
 * Only covers part of the API. You can access the raw refs to do everything normally without types.

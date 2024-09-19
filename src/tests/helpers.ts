@@ -1,6 +1,9 @@
 import { FirestoreLiftInitConfig } from '../models';
 import { FirestoreLiftCollection } from '../FirestoreLiftCollection';
-import firebase from 'firebase';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/database';
+import 'firebase/compat/firestore';
+
 import { createFirestoreLift } from '../FirestoreLift';
 import { clearFirestoreData } from '@firebase/testing';
 import { TypedFirebaseObjectOrPrimativeRefGenerator, createRtdbLift } from '../RTDB';
