@@ -6,12 +6,17 @@ import {
   MagicServerTimestampString,
   FirestoreLiftStats
 } from './models';
+import * as _ from 'lodash';
 import { FirestoreLiftCollection } from './FirestoreLiftCollection';
 import { BatchRunner } from './BatchRunner';
 
 // Expects a generic of a very specific shape. See examples
 export function createFirestoreLift<T>(config: FirestoreLiftInitConfig): T & FirestoreLiftRoot {
-  const batchRunner = new BatchRunner({ app: config.firebaseApp, firestoreModule: config.firestoreModule });
+  const batchRunner = new BatchRunner({
+    app: config.firebaseApp,
+    firestoreModule: config.firestoreModule,
+    onDocumentsWritten: config.onDocumentsWritten
+  });
 
   const pendingFirestoreLift: any = {
     _GetStats: () => {
@@ -35,7 +40,7 @@ export function createFirestoreLift<T>(config: FirestoreLiftInitConfig): T & Fir
         s.byCollection[c] = f._stats;
       });
 
-      return s;
+      return _.cloneDeep(s);
     },
     _setFirestoreLiftDisabledStatus: (isDisabled: boolean) => {
       Object.keys(config.collections).forEach((collectionName) => {

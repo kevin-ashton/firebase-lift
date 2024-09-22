@@ -1,4 +1,4 @@
-import firebase from 'firebase/compat/app';
+import type firebase from 'firebase/compat/app';
 import { BatchRunner } from './BatchRunner';
 
 export interface FirestoreLiftRoot {
@@ -23,6 +23,7 @@ export interface FirestoreLiftInitConfig {
   firebaseApp: firebase.app.App;
   firestoreModule: typeof firebase.firestore; // We need to import the actual module since we often use firebase-admin on the server and need to access certain fields for delete and other things
   enforceImmutability?: boolean;
+  onDocumentsWritten: (docData: { collection: string; docId: string; __updatedAtMS: number }[]) => Promise<void>;
 }
 
 export interface FirestoreLiftStats {
@@ -40,13 +41,11 @@ export type Change<T> = { doc: T; changeType: 'added' | 'modified' | 'removed' }
 
 export type QueryResultSet<DocModel> = {
   docs: DocModel[];
-  rawDocs: Array<firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>>;
   nextQuery?: SimpleQuery<DocModel>;
 };
 
 export type QuerySubscriptionResultSet<DocModel> = {
   docs: DocModel[];
-  rawDocs: Array<firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>>;
   changes: Change<DocModel>[];
   metadata: firebase.firestore.SnapshotMetadata;
 };
@@ -98,7 +97,8 @@ export interface SimpleQuery<DocModel> {
   startAfter?: startEndAtTypes[];
   endAt?: startEndAtTypes[];
   endBefore?: startEndAtTypes[];
-  _internalStartAfterDocId?: any; // Used for pagination. If defined then we ignore startAt
+  _internalStartAfterDocId?: any; // Used for pagination. If defined then we ignore startAfter
+  _internalStartAtDocId?: any; // Used for pagination. If defined then we ignore startAt
 }
 
 export type Optional<T> = { [P in keyof T]?: Optional2<T[P]> };

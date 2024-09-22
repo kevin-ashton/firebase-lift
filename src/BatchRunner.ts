@@ -1,4 +1,4 @@
-import firebase from 'firebase/compat/app';
+import type firebase from 'firebase/compat/app';
 import {
   BatchTask,
   BatchTaskEmpty,
@@ -7,14 +7,21 @@ import {
   MagicServerTimestampString
 } from './models';
 import { generateFirestorePathFromObject, defaultEmptyTask } from './misc';
+import { DocumentWriteChange } from './FirestoreLiftCollection';
 
 export class BatchRunner {
   public firestoreModule: typeof firebase.firestore;
   public app: firebase.app.App;
+  public onDocumentsWritten: (docData: DocumentWriteChange[]) => Promise<void>;
 
-  constructor(config: { firestoreModule: typeof firebase.firestore; app: firebase.app.App }) {
+  constructor(config: {
+    firestoreModule: typeof firebase.firestore;
+    app: firebase.app.App;
+    onDocumentsWritten: (docData: DocumentWriteChange[]) => Promise<void>;
+  }) {
     this.firestoreModule = config.firestoreModule;
     this.app = config.app;
+    this.onDocumentsWritten = config.onDocumentsWritten;
   }
 
   // We use a magic string for deletes so we can pass around batches of change sets to be environment agnostic
@@ -50,11 +57,16 @@ export class BatchRunner {
   }
 
   async executeBatch(b: BatchTask[], opts?: { transaction?: firebase.firestore.Transaction }) {
+    b = b.filter((q) => q); //Filter out falsey
+
     const firestoreInstance = this.firestoreModule('isFakeFirestoreApp' in this.app ? undefined : this.app);
 
     const batch = (opts?.transaction ?? firestoreInstance.batch()) as firebase.firestore.WriteBatch;
 
+    const __updatedAtMS = Date.now();
+
     try {
+      const documentWriteChanges: DocumentWriteChange[] = [];
       for (let i = 0; i < b.length; i++) {
         let task = b[i];
         if (task.type === 'empty') {
@@ -64,15 +76,53 @@ export class BatchRunner {
         if (!task.id) {
           throw Error(`Unable to process item. Lacks an id. Collection: ${task.collection}. Task Type: ${task.type}`);
         }
+
+        if (task.type === 'update' || task.type === 'updateShallow') {
+          documentWriteChanges.push({
+            collection: task.collection,
+            docId: task.id,
+            __updatedAtMS,
+            type: 'update',
+            docChanges: task.doc
+          });
+        } else if (task.type === 'delete') {
+          documentWriteChanges.push({
+            collection: task.collection,
+            docId: task.id,
+            __updatedAtMS,
+            type: 'delete'
+          });
+        } else {
+          documentWriteChanges.push({
+            collection: task.collection,
+            docId: task.id,
+            __updatedAtMS,
+            type: 'other'
+          });
+        }
+
         let ref = firestoreInstance.collection(task.collection).doc(task.id);
 
         let newObj;
+
         switch (task.type) {
           case 'add':
-            batch.set(ref, this.scrubDataPreWrite({ obj: task.doc, removeEmptyObjects: false }), { merge: true });
+            batch.set(
+              ref,
+              this.scrubDataPreWrite({ obj: cloneDeep({ ...task.doc, __updatedAtMS }), removeEmptyObjects: false }),
+              {
+                merge: true
+              }
+            );
             break;
           case 'set':
-            batch.set(ref, this.scrubDataPreWrite({ obj: task.doc, removeEmptyObjects: false }), { merge: false });
+            batch.set(
+              ref,
+              this.scrubDataPreWrite({ obj: cloneDeep({ ...task.doc, __updatedAtMS }), removeEmptyObjects: false }),
+              {
+                merge: false
+              }
+            );
             break;
           case 'setPath':
             let p = generateFirestorePathFromObject(task.pathObj);
@@ -83,16 +133,16 @@ export class BatchRunner {
               return acc[val];
             }, task.value);
             newPathVal = this.scrubDataPreWrite({ obj: newPathVal, removeEmptyObjects: false });
-            batch.update(ref, p.path, newPathVal);
+            batch.update(ref, p.path, newPathVal, '__updatedAtMS', __updatedAtMS);
             break;
           case 'update':
             //firestore set merge has the very dumb default behavior of making empty objects overwriting the object entirely
-            newObj = this.scrubDataPreWrite({ obj: task.doc, removeEmptyObjects: true });
-            batch.set(ref, newObj, { merge: true });
+            newObj = this.scrubDataPreWrite({ obj: cloneDeep(task.doc), removeEmptyObjects: true });
+            batch.set(ref, { ...newObj, __updatedAtMS }, { merge: true });
             break;
           case 'updateShallow':
-            newObj = this.scrubDataPreWrite({ obj: task.doc, removeEmptyObjects: false });
-            batch.update(ref, newObj);
+            newObj = this.scrubDataPreWrite({ obj: cloneDeep(task.doc), removeEmptyObjects: false });
+            batch.update(ref, { ...newObj, __updatedAtMS });
             break;
           case 'delete':
             batch.delete(ref);
@@ -104,7 +154,21 @@ export class BatchRunner {
       }
 
       if (!opts?.transaction) {
-        return batch.commit().then(() => defaultEmptyTask);
+        await batch.commit();
+        try {
+          await Promise.race([
+            this.onDocumentsWritten(documentWriteChanges),
+            new Promise((res) => {
+              setTimeout(() => {
+                res(null);
+              }, 500);
+            })
+          ]);
+        } catch (e) {
+          console.error('error-on-documents-written');
+          console.error(e);
+        }
+        return defaultEmptyTask;
       } else {
         return defaultEmptyTask;
       }
@@ -114,4 +178,17 @@ export class BatchRunner {
       throw e;
     }
   }
+}
+
+function cloneDeep(obj: any) {
+  if (obj === null) return null;
+  let clone = Object.assign({}, obj);
+  for (let i in clone) {
+    if (clone[i] != null && typeof clone[i] == 'object') clone[i] = cloneDeep(clone[i]);
+  }
+  if (Array.isArray(obj)) {
+    clone.length = obj.length;
+    return Array.from(clone);
+  }
+  return clone;
 }

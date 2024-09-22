@@ -1,6 +1,6 @@
 {
   "name": "firebase-lift",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "description": "Firebase provides a variety of tools that are amazing. This wraps various aspects of the api.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

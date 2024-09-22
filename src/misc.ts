@@ -1,5 +1,5 @@
 import { SimpleQuery, BatchTaskEmpty } from './models';
-import firebase from 'firebase/compat/app';
+import type firebase from 'firebase/compat/app';
 import * as shortid from 'shortid';
 
 export const defaultQueryLimit = 1000;

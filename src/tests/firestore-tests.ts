@@ -54,6 +54,8 @@ describe('Basic CRUD', () => {
     if (!b1) {
       throw 'No object found';
     }
+    // @ts-ignore
+    delete b1['__updatedAtMS'];
     assert.deepStrictEqual(stable(b1), stable(expectedUpdated));
   });
 
@@ -97,6 +99,8 @@ describe('Basic CRUD', () => {
     if (!b1) {
       throw 'No object found';
     }
+    // @ts-ignore
+    delete b1['__updatedAtMS'];
     assert.deepStrictEqual(stable(b1), stable(expectedUpdated));
   });
 
@@ -169,10 +173,14 @@ describe('Basic CRUD', () => {
     };
     await t.Person.set({ id: p1.id, doc: p1 });
     const r1Doc = await t.Person.getDoc(p1.id);
+    // @ts-ignore
+    delete r1Doc['__updatedAtMS'];
     assert.deepStrictEqual(jsonStable(r1Doc), jsonStable(p1));
 
     await t.Person.set({ id: p2.id, doc: p2 });
     const r2Doc = await t.Person.getDoc(p2.id);
+    // @ts-ignore
+    delete r2Doc['__updatedAtMS'];
     assert.deepStrictEqual(jsonStable(r2Doc), jsonStable(p2));
   });
 
@@ -415,32 +423,6 @@ describe('Batches/Queries/Subscriptions', () => {
     assert.strictEqual(totalResultSets, Math.ceil(people.length / batchSize));
   });
 
-  test('pagination w/ rawdocs', async () => {
-    const result: Person[] = [];
-    let batchSize = 2;
-    let totalResultSets = 0;
-    let lastRawDoc: any;
-
-    while (true) {
-      totalResultSets += 1;
-      let pendingQuery: SimpleQuery<Person> = {
-        limit: batchSize
-      };
-      if (lastRawDoc) {
-        pendingQuery.startAfter = [lastRawDoc];
-      }
-      const r = await t.Person.query(pendingQuery);
-      result.push(...r.docs);
-      if (r.rawDocs.length > 0) {
-        lastRawDoc = r.rawDocs[r.rawDocs.length - 1];
-      } else {
-        break;
-      }
-    }
-
-    assert.strictEqual(result.length, people.length);
-  });
-
   test('multi query', async () => {
     const r = await t.Person.multiQuery({
       queries: [{ where: [{ age: ['==', 1] }] }, { where: [{ favFoods: { american: ['==', 'cheese burger'] } }] }]
@@ -531,6 +513,8 @@ describe('Batches/Queries/Subscriptions', () => {
           pass += 1;
           if (pass === 1) {
             try {
+              // @ts-ignore
+              delete r['__updatedAtMS'];
               assert.deepStrictEqual(jsonStable(r), jsonStable(person));
               await t.Person.update({ id: person.id, doc: { age: 100 } });
             } catch (e) {

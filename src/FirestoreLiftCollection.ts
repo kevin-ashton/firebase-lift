@@ -1,4 +1,4 @@
-import firebase from 'firebase/compat/app';
+import type firebase from 'firebase/compat/app';
 import {
   BatchTaskAdd,
   BatchTaskDelete,
@@ -135,7 +135,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                 return;
               }
               this._stats.docsFetched += 1;
-              let value: DocModel | null = snapshot.exists ? (snapshot.data() as any) : null;
+              let value: DocModel | null = snapshot.exists ? (getSnapshotData(snapshot) as any) : null;
 
               if (this.isDisabled) {
                 console.warn('Cannot docSubscription while firestoreLift disabled');
@@ -223,6 +223,9 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                 }
               },
               (e) => {
+                if (!hasFiredOnceTracker[index]) {
+                  hasFiredOnceTracker[index] = true;
+                }
                 errorFn(e);
               }
             );
@@ -244,8 +247,6 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     let subscriptionId = md5(jsonStable(query));
     let queryRef = generateQueryRef(query, this.collection, this.firestore as any);
 
-    const subscriptionStackTrace = new Error().stack;
-
     return {
       subscribe: (fn, errorFn: (e: Error) => void) => {
         let uniqueSubscriptionId = this.firestoreSubscriptionIdCounter;
@@ -255,22 +256,21 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
           let unsubFirestore = queryRef.onSnapshot(
             // Disable the cache. Can cause strange behavior
             { includeMetadataChanges: true },
-            (snapshot) => {
+            (snapshot: any) => {
               if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) {
                 return;
               }
 
-              let docs: any = snapshot.docs.map((d) => d.data());
+              let docs: any = snapshot.docs.map((d: any) => getSnapshotData(d));
               let changes: Change<DocModel> = [];
 
               this._stats.docsFetched += snapshot.docChanges().length;
-              snapshot.docChanges().forEach((change) => {
-                changes.push({ doc: change.doc.data() as any, changeType: change.type });
+              snapshot.docChanges().forEach((change: any) => {
+                changes.push({ doc: getSnapshotData(change.doc) as any, changeType: change.type });
               });
 
               let value: QuerySubscriptionResultSet<DocModel> = {
                 docs: docs,
-                rawDocs: snapshot.docs,
                 changes: changes as any,
                 metadata: snapshot.metadata
               };
@@ -298,7 +298,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                 this.firestoreSubscriptions[subscriptionId].fns[i](value);
               }
             },
-            (err) => {
+            (err: any) => {
               let msg = `${err.message} in firestore-lift subscription on collection ${
                 this.collection
               } with query:${JSON.stringify(query)}`;
@@ -308,7 +308,6 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
               }
 
               let detailedError = new Error(msg);
-              detailedError.stack = subscriptionStackTrace;
               if (Object.keys(this.firestoreSubscriptions[subscriptionId].errorFns).length > 0) {
                 for (let i in this.firestoreSubscriptions[subscriptionId].errorFns) {
                   this.firestoreSubscriptions[subscriptionId].errorFns[i](detailedError);
@@ -351,10 +350,8 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   }): Promise<QueryResultSet<DocModel>> {
     const results = await Promise.all(p.queries.map((q) => this.query(q)));
     let docs: DocModel[] = [];
-    let rawDocs: Array<firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>> = [];
     results.forEach((res) => {
       docs.push(...res.docs);
-      rawDocs.push(...res.rawDocs);
     });
 
     if (p.mergeProcess?.runDedupe) {
@@ -370,8 +367,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
     }
 
     return {
-      docs,
-      rawDocs
+      docs
     };
   }
 
@@ -387,14 +383,10 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
           fn({
             changes: [],
             docs: [],
-            metadata: { fromCache: false, hasPendingWrites: false, isEqual: false as any },
-            rawDocs: []
+            metadata: { fromCache: false, hasPendingWrites: false, isEqual: false as any }
           });
         } else {
           const currentValues: DocModel[][] = p.queries.map(() => []);
-          const currentRawDocs: Array<Array<
-            firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>
-          >> = p.queries.map(() => []);
           const hasFiredOnceTracker: Record<string, true> = {};
           let hasFiredOnce = false;
           p.queries.forEach((q, index) => {
@@ -405,10 +397,8 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                   hasFiredOnceTracker[index] = true;
                 }
                 currentValues[index] = result.docs;
-                currentRawDocs[index] = result.rawDocs;
                 if (Object.keys(hasFiredOnceTracker).length === p.queries.length) {
                   let docs = _.flatten(currentValues);
-                  let rawDocs = _.flatten(currentRawDocs);
 
                   if (p.mergeProcess?.runDedupe) {
                     docs = _.uniqBy(docs, 'id');
@@ -424,8 +414,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
                   fn({
                     docs,
                     changes: hasFiredOnce ? result.changes : [],
-                    metadata: result.metadata,
-                    rawDocs: rawDocs
+                    metadata: result.metadata
                   });
                   hasFiredOnce = true;
                 }
@@ -450,7 +439,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   async query(query: SimpleQuery<DocModel>): Promise<QueryResultSet<DocModel>> {
     if (this.isDisabled) {
       console.warn('Cannot query while firestoreLift disabled');
-      return { docs: [], rawDocs: [] };
+      return { docs: [] };
     }
 
     try {
@@ -460,14 +449,19 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
         let startAfterDoc = await this.firestore.collection(this.collection).doc(query._internalStartAfterDocId).get();
         queryRef = queryRef.startAfter(startAfterDoc) as any;
       }
+      if (query._internalStartAtDocId) {
+        // Find start doc. This is used for pagination
+        let startAtDoc = await this.firestore.collection(this.collection).doc(query._internalStartAtDocId).get();
+        queryRef = queryRef.startAt(startAtDoc) as any;
+      }
       let results: DocModel[] = [];
       let res = await queryRef.get();
       for (let i = 0; i < res.docs.length; i++) {
-        let doc: any = res.docs[i].data();
+        let doc: any = getSnapshotData(res.docs[i]);
         results.push(doc);
       }
 
-      let result: QueryResultSet<DocModel> = { docs: results, rawDocs: res.docs };
+      let result: QueryResultSet<DocModel> = { docs: results };
 
       if (res.size === query.limit) {
         let paginationQuery = { ...query };
@@ -502,7 +496,7 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
         (async () => {
           try {
             let res = await this.firestore.collection(this.collection).doc(ids[i]).get();
-            let doc = res.data();
+            let doc = getSnapshotData(res);
             if (doc) {
               return doc as any;
             } else {
@@ -539,7 +533,10 @@ export class FirestoreLiftCollection<DocModel extends { id: string }> {
   }
 
   // Adds a document
-  async add(request: { doc: DocModel }, config?: { returnBatchTask: boolean }): Promise<BatchTaskAdd | BatchTaskEmpty> {
+  async add(
+    request: { doc: PartialBy<DocModel, 'id'> },
+    config?: { returnBatchTask: boolean }
+  ): Promise<BatchTaskAdd | BatchTaskEmpty> {
     if (this.isDisabled) {
       console.warn('Cannot add while firestoreLift disabled');
       return defaultEmptyTask;
@@ -727,10 +724,39 @@ if (typeof Proxy !== 'undefined') {
         return target[key];
       }
     },
-    set() {
-      console.info('Trying to mutate firestore lift data!!!! Download dev bundle');
-      console.error(new Error().stack);
-      throw new Error('Cannot mutate objects returned from Firestore Lift');
+    set(target: any, prop: any, newValue: any) {
+      if (!_.isEqual(target[prop], newValue)) {
+        console.info('Trying to mutate firestore lift data!!!!');
+        console.info('old', target[prop]);
+        console.info('new', newValue);
+        throw new Error('Cannot mutate objects returned from Firestore Lift');
+      } else {
+        return true;
+      }
     }
   };
+}
+
+type Simplify<T> = { [KeyType in keyof T]: T[KeyType] } & {};
+type PartialBy<T, K extends keyof T> = Simplify<Omit<T, K> & Partial<Pick<T, K>>>;
+
+type BaseDocChange = { collection: string; docId: string; __updatedAtMS: number };
+type UpdateDocChange = BaseDocChange & { type: 'update'; docChanges: Record<string, any> };
+type DeleteDocChange = BaseDocChange & { type: 'delete' };
+type OtherDocChange = BaseDocChange & { type: 'other' };
+export type DocumentWriteChange = UpdateDocChange | DeleteDocChange | OtherDocChange;
+
+//Sometimes the returned document doesn't have an "id" property due to data corruption. In those cases, the true id can still be gotten via the __id__ property
+function getSnapshotData(snapshot: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData>) {
+  const data = snapshot.data();
+  if (data) {
+    Object.defineProperty(data, '__id__', {
+      enumerable: false,
+      writable: false,
+      value: snapshot.id,
+      configurable: false
+    });
+  }
+
+  return data;
 }

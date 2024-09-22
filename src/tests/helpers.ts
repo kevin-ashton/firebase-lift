@@ -3,10 +3,9 @@ import { FirestoreLiftCollection } from '../FirestoreLiftCollection';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/database';
 import 'firebase/compat/firestore';
-
 import { createFirestoreLift } from '../FirestoreLift';
 import { clearFirestoreData } from '@firebase/testing';
-import { TypedFirebaseObjectOrPrimitiveRefGenerator, createRtdbLift } from '../RTDB';
+import { TypedFirebaseObjectOrPrimativeRefGenerator, createRtdbLift } from '../RTDB';
 
 /* *****************
   Demo Models
@@ -74,7 +73,8 @@ export function getTestFirestoreLift() {
       }
     },
     firebaseApp: app,
-    firestoreModule: firebase.firestore
+    firestoreModule: firebase.firestore,
+    onDocumentsWritten: async (docData) => {}
   };
 
   return createFirestoreLift<ExampleFirestore>(c);
@@ -82,8 +82,8 @@ export function getTestFirestoreLift() {
 
 export function getTestRtdbLift() {
   const nodes = {
-    account: (null as unknown) as TypedFirebaseObjectOrPrimitiveRefGenerator<Person>,
-    book: (null as unknown) as TypedFirebaseObjectOrPrimitiveRefGenerator<Book>
+    account: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Person>,
+    book: (null as unknown) as TypedFirebaseObjectOrPrimativeRefGenerator<Book>
   };
 
   return createRtdbLift({ firebaseApp: app, nodes });
